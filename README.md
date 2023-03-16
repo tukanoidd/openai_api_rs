@@ -19,6 +19,7 @@ A manual implementation of the OpenAI API based on its
 ## Plans
 - Implement all of functionality
 - Refactor code: 
+  - Maybe try to improve the security of storing the api key in memory by using cryptography, not sure 
   - Readability
   - Performance
   - Type security (have some ideas for using nutype for specific values and maybe subtyping for requests)
