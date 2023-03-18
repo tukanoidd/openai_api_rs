@@ -63,7 +63,7 @@ pub struct CompletionRequestBodyBuilder {
     ///
     /// Whether to stream back partial progress. If set, tokens will be sent as data-only
     /// [server-sent events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events#Event_stream_format)
-    /// as they become available, with the stream terminated by a data: [DONE]
+    /// as they become available, with the stream terminated by a data: \[DONE]
     /// message.
     stream: Option<bool>,
     /// Optional. Defaults to null.
