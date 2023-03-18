@@ -58,14 +58,17 @@ impl<'client> App<'client> {
 impl<'client> eframe::App for App<'client> {
     fn update(&mut self, ctx: &Context, _frame: &mut Frame) {
         CentralPanel::default().show(ctx, |ui| {
+            let t1_width = ui.available_width() * 0.45;
+
             ui.horizontal_centered(|ui| {
                 ScrollArea::vertical()
                     .id_source("text")
                     .max_height(ui.available_height())
-                    .max_width(ui.available_width() * 0.45)
+                    .max_width(t1_width)
                     .show(ui, |ui| {
                         TextEdit::multiline(&mut self.text)
                             .min_size(ui.available_size())
+                            .desired_width(t1_width)
                             .ui(ui);
                     });
 
@@ -91,13 +94,16 @@ impl<'client> eframe::App for App<'client> {
 
                 ui.add_space(5.0);
 
+                let t2_width = ui.available_width();
+
                 ScrollArea::vertical()
                     .id_source("result")
                     .max_height(ui.available_height())
-                    .max_width(ui.available_width())
+                    .max_width(t2_width)
                     .show(ui, |ui| {
                         TextEdit::multiline(&mut self.result_text)
                             .min_size(ui.available_size())
+                            .desired_width(t2_width)
                             .ui(ui);
                     });
             });
