@@ -6,7 +6,7 @@ A manual implementation of the OpenAI API based on its
 - [x] Authentication
 - [x] Models
 - [x] Completions
-- [ ] Chat
+- [x] Chat
 - [ ] Edits
 - [ ] Images
 - [ ] Embeddings
