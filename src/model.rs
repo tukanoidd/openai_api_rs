@@ -1,6 +1,8 @@
+use crate::request::CompletionRequestBody;
 use crate::{
-    completion::{CompletionRequestBodyBuilder, TextCompletionResponse, COMPLETION_URL},
-    error, APIKeysAccess,
+    error,
+    request::completion::{TextCompletionResponse, COMPLETION_URL},
+    APIKeysAccess,
 };
 
 #[derive(Debug, getset::Getters)]
@@ -106,20 +108,16 @@ impl<'client> Model<'client> {
         })
     }
 
-    pub fn init_completion_request_builder(&self) -> CompletionRequestBodyBuilder {
-        CompletionRequestBodyBuilder::new(&self.id)
-    }
-
     #[cfg(feature = "blocking")]
     pub fn request_completion_blocking(
         &self,
-        body: CompletionRequestBodyBuilder,
+        body: CompletionRequestBody,
     ) -> error::Result<TextCompletionResponse> {
         if !Self::COMPLETIONS_COMPATIBLE.contains(&self.id.as_str()) {
             return Err(error::ModelError::NotCompatibleWithCompletion.into());
         }
 
-        let json = body.to_json();
+        let json = body.to_json()?;
         let res = self
             .blocking_client
             .post(COMPLETION_URL)
@@ -132,13 +130,13 @@ impl<'client> Model<'client> {
 
     pub async fn request_completion(
         &self,
-        body: CompletionRequestBodyBuilder,
+        body: CompletionRequestBody,
     ) -> error::Result<TextCompletionResponse> {
         if !Self::COMPLETIONS_COMPATIBLE.contains(&self.id.as_str()) {
             return Err(error::ModelError::NotCompatibleWithCompletion.into());
         }
 
-        let json = body.to_json();
+        let json = body.to_json()?;
         let res = self
             .async_client
             .post(COMPLETION_URL)

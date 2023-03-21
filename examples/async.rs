@@ -1,4 +1,5 @@
 use openai_api_rs::client::Client;
+use openai_api_rs::request::CompletionRequestBody;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() {
@@ -18,9 +19,8 @@ async fn main() {
         .unwrap();
 
     // Init the completion request for this model and configure it
-    let completion_request = text_davinci_model
-        .init_completion_request_builder()
-        .add_prompt("This is a test");
+    let completion_request = CompletionRequestBody::init(text_davinci_model.id().clone())
+        .with_prompt(vec!["This is a test".to_string()]);
 
     // Request the completion
     let completion = text_davinci_model
@@ -34,9 +34,8 @@ async fn main() {
     let gpt35_turbo_model = client.retrieve_model_info("gpt-3.5-turbo").await.unwrap();
 
     // Init the completion request for this model and configure it
-    let completion_request = gpt35_turbo_model
-        .init_completion_request_builder()
-        .add_prompt("This is a test");
+    let completion_request = CompletionRequestBody::init(gpt35_turbo_model.id().clone())
+        .with_prompt(vec!["This is a test".to_string()]);
 
     // Request the completion, expecting an error since this model is not supposed to be compatible
     // with completions

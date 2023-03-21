@@ -1,9 +1,9 @@
 use reqwest::header::HeaderMap;
 
 pub mod client;
-pub mod completion;
 pub mod error;
 pub mod model;
+pub mod request;
 
 trait APIKeysAccess {
     fn get_api_key(&self) -> &String;

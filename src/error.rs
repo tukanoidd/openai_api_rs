@@ -6,6 +6,7 @@ pub type Result<T> = std::result::Result<T, Error>;
 
 #[derive(Debug, thiserror::Error, miette::Diagnostic)]
 pub enum Error {
+    SerializationError(serde_json::Error),
     ReqwestError(Box<dyn std::error::Error>),
     ParseError(Box<dyn std::error::Error>),
     ModelError(Box<dyn std::error::Error>),
@@ -14,6 +15,7 @@ pub enum Error {
 impl Display for Error {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
+            Self::SerializationError(e) => e.fmt(f),
             Self::ReqwestError(e) | Self::ParseError(e) | Self::ModelError(e) => e.fmt(f),
         }
     }
@@ -70,3 +72,9 @@ from_err!(
     ParseError[ParseError],
     ModelError[ModelError],
 );
+
+impl From<serde_json::Error> for Error {
+    fn from(e: serde_json::Error) -> Self {
+        Self::SerializationError(e)
+    }
+}
