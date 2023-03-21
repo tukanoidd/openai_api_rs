@@ -1,3 +1,5 @@
+use openai_api_rs::request::chat_completion::{ChatMessage, ChatRole};
+use openai_api_rs::request::ChatCompletionRequest;
 use openai_api_rs::{client::Client, request::TextCompletionRequest};
 
 fn main() {
@@ -21,7 +23,7 @@ fn main() {
 
     // Request the completion
     let completion = text_davinci_model
-        .request_completion_blocking(completion_request)
+        .request_text_completion_blocking(completion_request)
         .unwrap();
 
     println!("{:#?}", completion);
@@ -31,14 +33,31 @@ fn main() {
         .retrieve_model_info_blocking("gpt-3.5-turbo")
         .unwrap();
 
-    // Init the completion request for this model and configure it
+    // Init the text completion request for this model and configure it
     let completion_request = TextCompletionRequest::init(gpt35_turbo_model.id().clone())
         .with_prompt(vec!["This is a test".to_string()]);
 
-    // Request the completion, expecting an error since this model is not supposed to be compatible
+    // Request the text completion, expecting an error since this model is not supposed to be compatible
     // with completions
-    match gpt35_turbo_model.request_completion_blocking(completion_request) {
+    match gpt35_turbo_model.request_text_completion_blocking(completion_request) {
         Ok(completion) => panic!("Expected error, got {:?}", completion),
         Err(err) => println!("Got expected error: {}", err),
     };
+
+    // Init the chat completion request for this model and configure it
+    let chat_completion_request = ChatCompletionRequest::init(
+        gpt35_turbo_model.id().clone(),
+        vec![ChatMessage {
+            role: ChatRole::User,
+            content: "Hello, how are you?".to_string(),
+        }],
+    );
+
+    // Request the chat completion
+    let response = gpt35_turbo_model
+        .request_chat_completion_blocking(chat_completion_request)
+        .unwrap();
+
+    // Print out the chat completion response
+    println!("{:#?}", response);
 }

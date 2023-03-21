@@ -1,10 +1,11 @@
 use const_format::concatcp;
+use serde::Deserialize;
 
 use crate::client::BASE_URL;
 
-pub const COMPLETION_URL: &str = concatcp!(BASE_URL, "/completions");
+pub const TEXT_COMPLETION_URL: &str = concatcp!(BASE_URL, "/completions");
 
-#[derive(Debug, serde::Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct TextCompletionResponse {
     pub choices: Vec<TextCompletionChoice>,
     pub created: u64,
@@ -14,7 +15,7 @@ pub struct TextCompletionResponse {
     pub usage: TextCompletionUsage,
 }
 
-#[derive(Debug, serde::Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct TextCompletionChoice {
     pub finish_reason: String,
     pub index: u64,
@@ -22,7 +23,7 @@ pub struct TextCompletionChoice {
     pub text: String,
 }
 
-#[derive(Debug, serde::Deserialize)]
+#[derive(Debug, Deserialize)]
 pub struct TextCompletionUsage {
     pub completion_tokens: u64,
     pub prompt_tokens: u64,

@@ -42,14 +42,18 @@ impl Display for ParseError {
 
 #[derive(Debug, thiserror::Error, miette::Diagnostic)]
 pub enum ModelError {
-    NotCompatibleWithCompletion,
+    NotCompatibleWithTextCompletion,
+    NotCompatibleWithChatCompletion,
 }
 
 impl Display for ModelError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Self::NotCompatibleWithCompletion => {
-                write!(f, "Model is not compatible with completion endpoint, please use one of these models: {:?}", Model::COMPLETIONS_COMPATIBLE)
+            Self::NotCompatibleWithTextCompletion => {
+                write!(f, "Model is not compatible with text completion endpoint, please use one of these models: {:?}", Model::TEXT_COMPLETIONS_COMPATIBLE)
+            }
+            Self::NotCompatibleWithChatCompletion => {
+                write!(f, "Model is not compatible with chat completion endpoint, please use one of these models: {:?}", Model::CHAT_COMPLETIONS_COMPATIBLE)
             }
         }
     }

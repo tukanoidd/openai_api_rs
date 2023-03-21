@@ -5,7 +5,7 @@ use macros::rq;
 use crate::request::chat_completion::ChatMessage;
 
 pub mod chat_completion;
-pub mod completion;
+pub mod text_completion;
 
 ///
 #[rq(

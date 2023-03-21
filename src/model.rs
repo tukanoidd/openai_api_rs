@@ -1,9 +1,60 @@
 use crate::{
     error,
-    request::completion::{TextCompletionResponse, COMPLETION_URL},
-    request::TextCompletionRequest,
+    request::{
+        chat_completion::{ChatCompletionResponse, CHAT_COMPLETION_URL},
+        text_completion::{TextCompletionResponse, TEXT_COMPLETION_URL},
+        ChatCompletionRequest, TextCompletionRequest,
+    },
     APIKeysAccess,
 };
+
+macro_rules! request {
+    ($($name:ident),*) => {
+        paste::paste! {
+            $(
+                #[cfg(feature = "blocking")]
+                pub fn [< request_ $name:snake _blocking >](
+                    &self,
+                    body: [< $name Request >],
+                ) -> error::Result<[< $name Response >]> {
+                    if !Self::[< $name:snake:upper S_COMPATIBLE >].contains(&self.id.as_str()) {
+                        return Err(error::ModelError::[< NotCompatibleWith $name >].into());
+                    }
+
+                    let json = body.to_json()?;
+                    let res = self
+                        .blocking_client
+                        .post([< $name:snake:upper _URL >])
+                        .headers(self.common_headers())
+                        .json(&json)
+                        .send()?;
+
+                    Ok(res.json()?)
+                }
+
+                pub async fn [< request_ $name:snake >](
+                    &self,
+                    body: [< $name Request >],
+                ) -> error::Result<[< $name Response >]> {
+                    if !Self::[< $name:snake:upper S_COMPATIBLE >].contains(&self.id.as_str()) {
+                        return Err(error::ModelError::[< NotCompatibleWith $name >].into());
+                    }
+
+                    let json = body.to_json()?;
+                    let res = self
+                        .async_client
+                        .post([< $name:snake:upper _URL >])
+                        .headers(self.common_headers())
+                        .json(&json)
+                        .send()
+                        .await?;
+
+                    Ok(res.json().await?)
+                }
+            )*
+        }
+    };
+}
 
 #[derive(Debug, getset::Getters)]
 pub struct Model<'client> {
@@ -35,7 +86,7 @@ impl<'client> Model<'client> {
         "gpt-3.5-turbo",
         "gpt-3.5-turbo-0301",
     ];
-    pub const COMPLETIONS_COMPATIBLE: &'static [&'static str] = &[
+    pub const TEXT_COMPLETIONS_COMPATIBLE: &'static [&'static str] = &[
         "text-davinci-003",
         "text-davinci-002",
         "text-curie-001",
@@ -108,45 +159,7 @@ impl<'client> Model<'client> {
         })
     }
 
-    #[cfg(feature = "blocking")]
-    pub fn request_completion_blocking(
-        &self,
-        body: TextCompletionRequest,
-    ) -> error::Result<TextCompletionResponse> {
-        if !Self::COMPLETIONS_COMPATIBLE.contains(&self.id.as_str()) {
-            return Err(error::ModelError::NotCompatibleWithCompletion.into());
-        }
-
-        let json = body.to_json()?;
-        let res = self
-            .blocking_client
-            .post(COMPLETION_URL)
-            .headers(self.common_headers())
-            .json(&json)
-            .send()?;
-
-        Ok(res.json()?)
-    }
-
-    pub async fn request_completion(
-        &self,
-        body: TextCompletionRequest,
-    ) -> error::Result<TextCompletionResponse> {
-        if !Self::COMPLETIONS_COMPATIBLE.contains(&self.id.as_str()) {
-            return Err(error::ModelError::NotCompatibleWithCompletion.into());
-        }
-
-        let json = body.to_json()?;
-        let res = self
-            .async_client
-            .post(COMPLETION_URL)
-            .headers(self.common_headers())
-            .json(&json)
-            .send()
-            .await?;
-
-        Ok(res.json().await?)
-    }
+    request!(TextCompletion, ChatCompletion);
 }
 
 impl<'client> APIKeysAccess for Model<'client> {
