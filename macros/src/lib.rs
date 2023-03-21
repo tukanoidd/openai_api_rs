@@ -1,13 +1,11 @@
-use std::collections::BTreeMap;
-use std::str::FromStr;
+use std::{collections::BTreeMap, str::FromStr};
 
 use proc_macro::TokenStream;
 use proc_macro2::Span;
 use quote::{format_ident, ToTokens};
-use syn::parse::Parser;
 use syn::{
-    parse_macro_input, parse_quote, punctuated::Punctuated, Data, DataStruct, DeriveInput, Field,
-    Ident, LitStr, Meta, MetaList, Token,
+    parse::Parser, parse_macro_input, parse_quote, punctuated::Punctuated, Data, DataStruct,
+    DeriveInput, Expr, ExprLit, Field, Lit, LitStr, Meta, MetaList, MetaNameValue, Token,
 };
 
 #[proc_macro_attribute]
@@ -16,11 +14,23 @@ pub fn rq(attr: TokenStream, input: TokenStream) -> TokenStream {
         panic!("Expected a struct");
     };
 
-    let parser = Punctuated::<Ident, Token![,]>::parse_separated_nonempty;
-    let substructs_names = parser.parse(attr).unwrap();
+    let parser = Punctuated::<MetaNameValue, Token![,]>::parse_separated_nonempty;
+    let substructs_names_docs = parser.parse(attr).unwrap();
+    let substructs_names_docs = substructs_names_docs
+        .iter()
+        .map(|meta| {
+            let name = meta.path.get_ident().unwrap();
+            let Expr::Lit(ExprLit { lit: Lit::Str(doc_str), .. }) = &meta.value else {
+                panic!("Expected a string literal");
+            };
+            let doc = quote::quote!(#[doc = #doc_str]);
+
+            (name, doc)
+        })
+        .collect::<Vec<_>>();
 
     assert!(
-        !substructs_names.is_empty(),
+        !substructs_names_docs.is_empty(),
         "Expected exactly two substructs"
     );
 
@@ -84,18 +94,20 @@ pub fn rq(attr: TokenStream, input: TokenStream) -> TokenStream {
                             (substruct_name.to_string().as_str() == "all").then_some(*req)
                         })
                 {
-                    substructs_names.iter().for_each(|substruct_name| {
-                        let mut field = field.clone();
+                    substructs_names_docs
+                        .iter()
+                        .for_each(|(&ref substruct_name, _)| {
+                            let mut field = field.clone();
 
-                        if all_req {
-                            fix_req_option(&mut field);
-                        }
+                            if all_req {
+                                fix_req_option(&mut field);
+                            }
 
-                        substructs_fields
-                            .entry(substruct_name.clone())
-                            .or_insert(Vec::new())
-                            .push((field, all_req));
-                    });
+                            substructs_fields
+                                .entry(substruct_name.clone())
+                                .or_insert(Vec::new())
+                                .push((field, all_req));
+                        });
 
                     return substructs_fields;
                 }
@@ -118,7 +130,7 @@ pub fn rq(attr: TokenStream, input: TokenStream) -> TokenStream {
                 substructs_fields
             });
 
-    let substructs = substructs_names.iter().map(|substruct_name| {
+    let substructs = substructs_names_docs.iter().map(|(substruct_name, doc)| {
         let actual_substruct_name = format_ident!("{substruct_name}RequestBody");
 
         let fields = substructs_fields.get(&substruct_name).unwrap();
@@ -210,6 +222,7 @@ pub fn rq(attr: TokenStream, input: TokenStream) -> TokenStream {
         };
 
         quote::quote! {
+            #doc
             #[derive(Debug, Default, getset::Getters)]
             pub struct #actual_substruct_name {
                 #(#fields_tokens),*

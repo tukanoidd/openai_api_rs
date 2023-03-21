@@ -7,9 +7,11 @@ use crate::request::chat_completion::ChatMessage;
 pub mod chat_completion;
 pub mod completion;
 
-/// Given a prompt, the model will return one or more predicted completions, and can also return
-/// the probabilities of alternative tokens at each position.
-#[rq(Completion, ChatCompletion)]
+///
+#[rq(
+    Completion = "Given a prompt, the model will return one or more predicted completions, and can also return the probabilities of alternative tokens at each position.",
+    ChatCompletion = "Given a chat conversation, the model will return a chat completion response."
+)]
 pub struct RequestBody {
     /// Required.
     ///
