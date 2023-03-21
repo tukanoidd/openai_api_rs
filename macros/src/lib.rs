@@ -1,31 +1,75 @@
 use std::{collections::BTreeMap, str::FromStr};
 
+use miette::IntoDiagnostic;
 use proc_macro::TokenStream;
-use proc_macro2::Span;
+use proc_macro2::{Span, TokenStream as TokenStream2};
 use quote::{format_ident, ToTokens};
 use syn::{
-    parse::Parser, parse_macro_input, parse_quote, punctuated::Punctuated, Data, DataStruct,
-    DeriveInput, Expr, ExprLit, Field, Lit, LitStr, Meta, MetaList, MetaNameValue, Token,
+    parse::Parser, parse_quote, punctuated::Punctuated, Data, DataStruct, DeriveInput, Expr,
+    ExprLit, Field, Lit, LitStr, Meta, MetaList, Token,
 };
+
+struct SubstructData {
+    doc: TokenStream2,
+    url: LitStr,
+    compatible_models: Vec<LitStr>,
+}
+
+impl Default for SubstructData {
+    fn default() -> Self {
+        Self {
+            doc: TokenStream2::new(),
+            url: LitStr::new("", Span::call_site()),
+            compatible_models: Vec::new(),
+        }
+    }
+}
 
 #[proc_macro_attribute]
 pub fn rq(attr: TokenStream, input: TokenStream) -> TokenStream {
-    let DeriveInput { data: Data::Struct(DataStruct {fields, ..}), .. } = parse_macro_input!(input) else {
+    rq_impl(attr, input).unwrap()
+}
+
+fn rq_impl(attr: TokenStream, input: TokenStream) -> miette::Result<TokenStream> {
+    let DeriveInput { data: Data::Struct(DataStruct {fields, ..}), .. } = syn::parse(input).into_diagnostic()? else {
         panic!("Expected a struct");
     };
 
-    let parser = Punctuated::<MetaNameValue, Token![,]>::parse_separated_nonempty;
-    let substructs_names_docs = parser.parse(attr).unwrap();
+    let parser = Punctuated::<MetaList, Token![,]>::parse_separated_nonempty;
+    let substructs_names_docs = parser.parse(attr).into_diagnostic()?;
     let substructs_names_docs = substructs_names_docs
         .iter()
         .map(|meta| {
-            let name = meta.path.get_ident().unwrap();
-            let Expr::Lit(ExprLit { lit: Lit::Str(doc_str), .. }) = &meta.value else {
-                panic!("Expected a string literal");
-            };
-            let doc = quote::quote!(#[doc = #doc_str]);
+            let name = meta.path.get_ident().expect("Expected an identifier");
 
-            (name, doc)
+            let tags = meta.parse_args_with(parser).unwrap();
+            let data = tags.iter().fold(SubstructData::default(), |mut data, tag| {
+                if tag.path.is_ident("doc") {
+                    let Expr::Lit(ExprLit { lit: Lit::Str(doc_str), .. }) = syn::parse2(tag.tokens.clone()).expect("Couldn't parse the doc") else {
+                        panic!("Expected a string literal");
+                    };
+
+                    data.doc = quote::quote!(#[doc = #doc_str]);
+                } else if tag.path.is_ident("url") {
+                    data.url = tag.parse_args::<LitStr>().expect("Couldn't parse the url");
+                } else if tag.path.is_ident("compatible_models") {
+                    let models = tag
+                        .parse_args_with(Punctuated::<LitStr, Token![,]>::parse_terminated)
+                        .expect("Couldn't parse the compatible_models");
+
+                    data.compatible_models = models.into_iter().collect();
+                } else {
+                    panic!("Expected on of these tags: ['doc', 'url', 'compatible_models']");
+                }
+
+                data
+            });
+
+            assert!(!data.doc.is_empty());
+            assert!(!data.url.to_token_stream().to_string().is_empty());
+            assert!(!data.compatible_models.is_empty());
+
+            (name, data)
         })
         .collect::<Vec<_>>();
 
@@ -62,17 +106,29 @@ pub fn rq(attr: TokenStream, input: TokenStream) -> TokenStream {
 
                 let (rq_attr_ind, rq_attr) = &rq_attrs[0];
 
-                let on_substructs = rq_attr.parse_args::<MetaList>().unwrap();
+                let on_substructs = rq_attr
+                    .parse_args::<MetaList>()
+                    .expect("Couldn't parse the #[rq(...)] attribute");
                 assert!(on_substructs.path.is_ident("on"), "Expected #[rq(on(...))]");
 
                 let on_substructs_names_req = on_substructs
                     .parse_args_with(Punctuated::<Meta, Token![,]>::parse_terminated)
-                    .unwrap()
+                    .expect("Couldn't parse the #[rq(on(...))] attribute")
                     .into_iter()
                     .map(|meta| match meta {
-                        Meta::Path(ident) => (ident.get_ident().cloned().unwrap(), false),
+                        Meta::Path(ident) => (
+                            ident
+                                .get_ident()
+                                .cloned()
+                                .expect("Couldn't parse the variant name"),
+                            false,
+                        ),
                         Meta::List(metalist) => {
-                            let ident = metalist.path.get_ident().cloned().unwrap();
+                            let ident = metalist
+                                .path
+                                .get_ident()
+                                .cloned()
+                                .expect("Expected a struct name or a StructName(req)");
 
                             assert_eq!(metalist.tokens.to_string().as_str(), "req");
 
@@ -100,7 +156,7 @@ pub fn rq(attr: TokenStream, input: TokenStream) -> TokenStream {
                             let mut field = field.clone();
 
                             if all_req {
-                                fix_req_option(&mut field);
+                                fix_req_option(&mut field).expect("Couldn't fix the field");
                             }
 
                             substructs_fields
@@ -118,7 +174,7 @@ pub fn rq(attr: TokenStream, input: TokenStream) -> TokenStream {
                         let mut field = field.clone();
 
                         if req {
-                            fix_req_option(&mut field);
+                            fix_req_option(&mut field).expect("Couldn't fix the field");
                         }
 
                         substructs_fields
@@ -130,10 +186,10 @@ pub fn rq(attr: TokenStream, input: TokenStream) -> TokenStream {
                 substructs_fields
             });
 
-    let substructs = substructs_names_docs.iter().map(|(substruct_name, doc)| {
+    let substructs = substructs_names_docs.iter().map(|(substruct_name, SubstructData { doc, url, compatible_models })| {
         let actual_substruct_name = format_ident!("{substruct_name}Request");
 
-        let fields = substructs_fields.get(&substruct_name).unwrap();
+        let fields = substructs_fields.get(&substruct_name).expect("Couldn't find the substruct fields");
 
         let fields_tokens = fields.iter().map(|(f, _)| quote::quote!(#f));
 
@@ -143,7 +199,7 @@ pub fn rq(attr: TokenStream, input: TokenStream) -> TokenStream {
             .collect::<Vec<_>>();
         let required_fields_names = required_fields
             .iter()
-            .map(|f| f.ident.as_ref().unwrap())
+            .map(|f| f.ident.as_ref().expect("Expected a named field"))
             .collect::<Vec<_>>();
         let non_required_fields = fields
             .iter()
@@ -151,28 +207,32 @@ pub fn rq(attr: TokenStream, input: TokenStream) -> TokenStream {
             .collect::<Vec<_>>();
 
         let init_func_args = required_fields.iter().map(|f| {
-            let ident = f.ident.as_ref().unwrap();
+            let ident = f.ident.as_ref().expect("Expected a named field");
             let ty = &f.ty;
 
             quote::quote!(#ident: #ty)
         });
-        let init_default_vals =
-            (required_fields.len() < fields.len()).then_some(quote::quote!(, ..Default::default()));
+        let init_default_vals = non_required_fields.iter().map(|f| {
+            let name = f.ident.as_ref().expect("Expected a named field");
+
+            quote::quote! { #name: Default::default() }
+        });
 
         let init_func = quote::quote! {
-            pub fn init(#(#init_func_args),*) -> Self {
+            pub fn init(model: &'model Model<'client>, #(#init_func_args),*) -> Self {
                 Self {
-                    #(#required_fields_names),*
-                    #init_default_vals
+                    model
+                    #(,#required_fields_names)*
+                    #(,#init_default_vals)*
                 }
             }
         };
 
         let with_functions = non_required_fields.iter().map(|f| {
             let mut f: Field = (*f).clone();
-            fix_req_option(&mut f);
+            fix_req_option(&mut f).expect("Failed to fix the option stripping");
 
-            let ident = f.ident.as_ref().unwrap();
+            let ident = f.ident.as_ref().expect("Expected a named field");
             let fn_name = format_ident!("with_{}", ident);
             let ty = &f.ty;
 
@@ -185,23 +245,30 @@ pub fn rq(attr: TokenStream, input: TokenStream) -> TokenStream {
             }
         });
 
-        let to_json_req_fields = required_fields.iter().map(|f| {
-            let ident = f.ident.as_ref().unwrap();
+        let to_json_req_fields = required_fields.iter().fold(quote::quote! {
+            res.insert(
+                "model".to_string(),
+                serde_json::value::to_value(self.model.id().clone())?,
+            );
+        }, |res_tokens, f| {
+            let ident = f.ident.as_ref().expect("Expected a named field");
             let ident_lit_str = LitStr::new(&ident.to_string(), Span::call_site());
 
             quote::quote! {
+                #res_tokens
+
                 res.insert(
                     #ident_lit_str.to_string(),
-                    serde_json::value::to_value(self.#ident)?,
+                    serde_json::value::to_value(self.#ident.clone())?,
                 );
             }
         });
         let to_json_non_req_fields = non_required_fields.iter().map(|f| {
-            let ident = f.ident.as_ref().unwrap();
+            let ident = f.ident.as_ref().expect("Expected a named field");
             let ident_lit_str = LitStr::new(&ident.to_string(), Span::call_site());
 
             quote::quote! {
-                if let Some(#ident) = self.#ident {
+                if let Some(#ident) = self.#ident.clone() {
                     res.insert(
                         #ident_lit_str.to_string(),
                         serde_json::value::to_value(#ident)?,
@@ -210,10 +277,10 @@ pub fn rq(attr: TokenStream, input: TokenStream) -> TokenStream {
             }
         });
         let to_json = quote::quote! {
-            pub fn to_json(self) -> Result<serde_json::Value, serde_json::Error> {
-                let mut res = serde_json::Map::new();
+            fn to_json(&self) -> serde_json::Result<serde_json::Value> {
+                let mut res = serde_json::Map::<String, serde_json::Value>::new();
 
-                #(#to_json_req_fields)*
+                #to_json_req_fields
 
                 #(#to_json_non_req_fields)*
 
@@ -221,35 +288,66 @@ pub fn rq(attr: TokenStream, input: TokenStream) -> TokenStream {
             }
         };
 
+        let model_error = format_ident!("NotCompatibleWith{}", substruct_name);
+        let response = format_ident!("{}Response", substruct_name);
+
         quote::quote! {
             #doc
-            #[derive(Debug, Default, getset::Getters)]
-            pub struct #actual_substruct_name {
+            #[derive(Debug, getset::Getters)]
+            pub struct #actual_substruct_name<'model, 'client> {
+                /// Required.
+                ///
+                /// ID of the model to use. You can use the [`crate::client::Client::list_models`] or
+                /// [`crate::client::Client::list_models_blocking`] to see all of your available models,
+                /// or see the [Model overview](https://platform.openai.com/docs/models/overview) for
+                /// descriptions of them.
+                model: &'model Model<'client>,
+
                 #(#fields_tokens),*
             }
 
-            impl #actual_substruct_name {
+            impl<'model, 'client> #actual_substruct_name<'model, 'client> {
                 #init_func
 
-                #to_json
-
                 #(#with_functions)*
+            }
+
+            impl<'model, 'client> crate::request::Request<'model, 'client, #response> for #actual_substruct_name<'model, 'client> {
+                const URL: &'static str = #url;
+
+                const COMPATIBLE_MODELS: &'static [&'static str] = &[
+                    #(#compatible_models),*
+                ];
+
+                fn model(&self) -> &'model Model<'client> {
+                    &self.model
+                }
+
+                fn model_error() -> crate::error::ModelError {
+                    crate::error::ModelError::#model_error
+                }
+
+                #to_json
             }
         }
     });
 
-    (quote::quote! {
+    Ok((quote::quote! {
         #(#substructs)*
     })
-    .into()
+    .into())
 }
 
-fn fix_req_option(field: &mut Field) {
+fn fix_req_option(field: &mut Field) -> miette::Result<()> {
     let ty_str = field.ty.to_token_stream().to_string().replace(' ', "");
 
     if ty_str.starts_with("Option<") {
-        let ty = proc_macro2::TokenStream::from_str(&ty_str[7..ty_str.len() - 1]).unwrap();
+        let ty = TokenStream2::from_str(&ty_str[7..ty_str.len() - 1]).map_err(|e| {
+            miette::miette!("Failed to turn stripped type into a TokenStream: {}", e)
+        })?;
 
-        field.ty = parse_quote!(#ty);
+        field.ty = syn::parse2(ty).into_diagnostic()?;
     }
+
+    Ok(())
 }

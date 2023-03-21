@@ -1,60 +1,7 @@
 use crate::{
     error,
-    request::{
-        chat_completion::{ChatCompletionResponse, CHAT_COMPLETION_URL},
-        text_completion::{TextCompletionResponse, TEXT_COMPLETION_URL},
-        ChatCompletionRequest, TextCompletionRequest,
-    },
     APIKeysAccess,
 };
-
-macro_rules! request {
-    ($($name:ident),*) => {
-        paste::paste! {
-            $(
-                #[cfg(feature = "blocking")]
-                pub fn [< request_ $name:snake _blocking >](
-                    &self,
-                    body: [< $name Request >],
-                ) -> error::Result<[< $name Response >]> {
-                    if !Self::[< $name:snake:upper S_COMPATIBLE >].contains(&self.id.as_str()) {
-                        return Err(error::ModelError::[< NotCompatibleWith $name >].into());
-                    }
-
-                    let json = body.to_json()?;
-                    let res = self
-                        .blocking_client
-                        .post([< $name:snake:upper _URL >])
-                        .headers(self.common_headers())
-                        .json(&json)
-                        .send()?;
-
-                    Ok(res.json()?)
-                }
-
-                pub async fn [< request_ $name:snake >](
-                    &self,
-                    body: [< $name Request >],
-                ) -> error::Result<[< $name Response >]> {
-                    if !Self::[< $name:snake:upper S_COMPATIBLE >].contains(&self.id.as_str()) {
-                        return Err(error::ModelError::[< NotCompatibleWith $name >].into());
-                    }
-
-                    let json = body.to_json()?;
-                    let res = self
-                        .async_client
-                        .post([< $name:snake:upper _URL >])
-                        .headers(self.common_headers())
-                        .json(&json)
-                        .send()
-                        .await?;
-
-                    Ok(res.json().await?)
-                }
-            )*
-        }
-    };
-}
 
 #[derive(Debug, getset::Getters)]
 pub struct Model<'client> {
@@ -62,7 +9,9 @@ pub struct Model<'client> {
     org_id: &'client Option<String>,
 
     #[cfg(feature = "blocking")]
+    #[get = "pub"]
     blocking_client: &'client reqwest::blocking::Client,
+    #[get = "pub"]
     async_client: &'client reqwest::Client,
 
     #[get = "pub"]
@@ -158,8 +107,6 @@ impl<'client> Model<'client> {
             permission,
         })
     }
-
-    request!(TextCompletion, ChatCompletion);
 }
 
 impl<'client> APIKeysAccess for Model<'client> {

@@ -1,9 +1,4 @@
-use const_format::concatcp;
 use serde::Deserialize;
-
-use crate::client::BASE_URL;
-
-pub const TEXT_COMPLETION_URL: &str = concatcp!(BASE_URL, "/completions");
 
 #[derive(Debug, Deserialize)]
 pub struct TextCompletionResponse {

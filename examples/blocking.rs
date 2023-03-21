@@ -1,5 +1,5 @@
 use openai_api_rs::request::chat_completion::{ChatMessage, ChatRole};
-use openai_api_rs::request::ChatCompletionRequest;
+use openai_api_rs::request::{ChatCompletionRequest, Request};
 use openai_api_rs::{client::Client, request::TextCompletionRequest};
 
 fn main() {
@@ -18,13 +18,11 @@ fn main() {
         .unwrap();
 
     // Init the completion request for this model and configure it
-    let completion_request = TextCompletionRequest::init(text_davinci_model.id().clone())
+    let completion_request = TextCompletionRequest::init(&text_davinci_model)
         .with_prompt(vec!["This is a test".to_string()]);
 
     // Request the completion
-    let completion = text_davinci_model
-        .request_text_completion_blocking(completion_request)
-        .unwrap();
+    let completion = completion_request.request_blocking().unwrap();
 
     println!("{:#?}", completion);
 
@@ -34,19 +32,19 @@ fn main() {
         .unwrap();
 
     // Init the text completion request for this model and configure it
-    let completion_request = TextCompletionRequest::init(gpt35_turbo_model.id().clone())
+    let completion_request = TextCompletionRequest::init(&gpt35_turbo_model)
         .with_prompt(vec!["This is a test".to_string()]);
 
     // Request the text completion, expecting an error since this model is not supposed to be compatible
     // with completions
-    match gpt35_turbo_model.request_text_completion_blocking(completion_request) {
+    match completion_request.request_blocking() {
         Ok(completion) => panic!("Expected error, got {:?}", completion),
         Err(err) => println!("Got expected error: {}", err),
     };
 
     // Init the chat completion request for this model and configure it
     let chat_completion_request = ChatCompletionRequest::init(
-        gpt35_turbo_model.id().clone(),
+        &gpt35_turbo_model,
         vec![ChatMessage {
             role: ChatRole::User,
             content: "Hello, how are you?".to_string(),
@@ -54,9 +52,7 @@ fn main() {
     );
 
     // Request the chat completion
-    let response = gpt35_turbo_model
-        .request_chat_completion_blocking(chat_completion_request)
-        .unwrap();
+    let response = chat_completion_request.request_blocking().unwrap();
 
     // Print out the chat completion response
     println!("{:#?}", response);

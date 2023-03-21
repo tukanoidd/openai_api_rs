@@ -1,26 +1,52 @@
 use std::{collections::BTreeMap, num::NonZeroU64};
 
+use async_trait::async_trait;
+
 use macros::rq;
 
-use crate::request::chat_completion::ChatMessage;
+use crate::{
+    error,
+    model::Model,
+    request::{
+        chat_completion::{ChatCompletionResponse, ChatMessage},
+        text_completion::TextCompletionResponse,
+    },
+    APIKeysAccess,
+};
 
 pub mod chat_completion;
 pub mod text_completion;
 
-///
 #[rq(
-    TextCompletion = "Given a prompt, the model will return one or more predicted completions, and can also return the probabilities of alternative tokens at each position.",
-    ChatCompletion = "Given a chat conversation, the model will return a chat completion response."
+    TextCompletion(
+        doc("Given a prompt, the model will return one or more predicted completions, and can also return the probabilities of alternative tokens at each position."),
+        url("https://api.openai.com/v1/completions"),
+        compatible_models(
+            "text-davinci-003",
+            "text-davinci-002",
+            "text-curie-001",
+            "text-babbage-001",
+            "text-ada-001",
+            "davinci",
+            "curie",
+            "babbage",
+            "ada",
+        )
+    ),
+    ChatCompletion(
+        doc("Given a chat conversation, the model will return a chat completion response."),
+        url("https://api.openai.com/v1/chat/completions"),
+        compatible_models(
+            "gpt-4",
+            "gpt-4-0314",
+            "gpt-4-32k",
+            "gpt-4-32k-0314",
+            "gpt-3.5-turbo",
+            "gpt-3.5-turbo-0301",
+        )
+    )
 )]
 pub struct RequestBody {
-    /// Required.
-    ///
-    /// ID of the model to use. You can use the [`crate::client::Client::list_models`] or
-    /// [`crate::client::Client::list_models_blocking`] to see all of your available models,
-    /// or see the [Model overview](https://platform.openai.com/docs/models/overview) for
-    /// descriptions of them.
-    #[rq(on(all(req)))]
-    model: String,
     /// Required.
     ///
     /// The messages to generate chat completions for, in the
@@ -162,4 +188,61 @@ pub struct RequestBody {
     /// [Learn more](https://platform.openai.com/docs/guides/safety-best-practices/end-user-ids).
     #[rq(on(TextCompletion, ChatCompletion))]
     user: Option<String>,
+}
+
+#[async_trait]
+pub trait Request<'model, 'client, Response>
+where
+    Response: serde::de::DeserializeOwned,
+    'client: 'model,
+{
+    const URL: &'static str;
+    const COMPATIBLE_MODELS: &'static [&'static str];
+
+    fn model(&self) -> &'model Model<'client>;
+    fn model_error() -> error::ModelError;
+
+    fn to_json(&self) -> serde_json::Result<serde_json::Value>;
+
+    #[cfg(feature = "blocking")]
+    fn request_blocking(&self) -> error::Result<Response>
+    where
+        Self: Sized,
+    {
+        if !Self::COMPATIBLE_MODELS.contains(&self.model().id().as_str()) {
+            return Err(Self::model_error().into());
+        }
+
+        let json = self.to_json()?;
+        let res = self
+            .model()
+            .blocking_client()
+            .post(Self::URL)
+            .headers(self.model().common_headers())
+            .json(&json)
+            .send()?;
+
+        Ok(res.json()?)
+    }
+
+    async fn request(&self) -> error::Result<Response>
+    where
+        Self: Sized + Sync,
+    {
+        if !Self::COMPATIBLE_MODELS.contains(&self.model().id().as_str()) {
+            return Err(Self::model_error().into());
+        }
+
+        let json = self.to_json()?;
+        let res = self
+            .model()
+            .async_client()
+            .post(Self::URL)
+            .headers(self.model().common_headers())
+            .json(&json)
+            .send()
+            .await?;
+
+        Ok(res.json().await?)
+    }
 }

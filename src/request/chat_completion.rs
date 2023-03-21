@@ -1,17 +1,12 @@
-use const_format::concatcp;
 use serde::{Deserialize, Serialize};
 
-use crate::client::BASE_URL;
-
-pub const CHAT_COMPLETION_URL: &str = concatcp!(BASE_URL, "/chat/completions");
-
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChatMessage {
     pub role: ChatRole,
     pub content: String,
 }
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum ChatRole {
     #[serde(rename = "user")]
     User,

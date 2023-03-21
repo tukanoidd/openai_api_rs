@@ -3,6 +3,7 @@ use egui::{CentralPanel, Context, ScrollArea, TextEdit, Vec2, Widget};
 use miette::IntoDiagnostic;
 use once_cell::sync::Lazy;
 
+use openai_api_rs::request::Request;
 use openai_api_rs::{client::Client, model::Model, request::TextCompletionRequest};
 
 static CLIENT: Lazy<Client> =
@@ -75,11 +76,10 @@ impl<'client> eframe::App for App<'client> {
                 ui.add_space(5.0);
 
                 if ui.button("Create a completion ->").clicked() {
-                    let request = TextCompletionRequest::init(self.text_davinci_model.id().clone())
+                    let request = TextCompletionRequest::init(&self.text_davinci_model)
                         .with_prompt(vec![self.text.clone()]);
-                    let completion = self
-                        .text_davinci_model
-                        .request_text_completion_blocking(request)
+                    let completion = request
+                        .request_blocking()
                         .expect("Failed to create completion");
 
                     self.result_text = completion
