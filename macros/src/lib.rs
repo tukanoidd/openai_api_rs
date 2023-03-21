@@ -75,6 +75,7 @@ pub fn rq(attr: TokenStream, input: TokenStream) -> TokenStream {
                     .collect::<Vec<_>>();
 
                 field.attrs.remove(*rq_attr_ind);
+                field.attrs.push(parse_quote!(#[get = "pub"]));
 
                 if let Some(all_req) =
                     on_substructs_names_req
@@ -209,7 +210,7 @@ pub fn rq(attr: TokenStream, input: TokenStream) -> TokenStream {
         };
 
         quote::quote! {
-            #[derive(Debug, Default)]
+            #[derive(Debug, Default, getset::Getters)]
             pub struct #actual_substruct_name {
                 #(#fields_tokens),*
             }
