@@ -131,7 +131,7 @@ pub fn rq(attr: TokenStream, input: TokenStream) -> TokenStream {
             });
 
     let substructs = substructs_names_docs.iter().map(|(substruct_name, doc)| {
-        let actual_substruct_name = format_ident!("{substruct_name}RequestBody");
+        let actual_substruct_name = format_ident!("{substruct_name}Request");
 
         let fields = substructs_fields.get(&substruct_name).unwrap();
 

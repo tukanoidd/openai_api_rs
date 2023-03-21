@@ -1,7 +1,7 @@
-use crate::request::CompletionRequestBody;
 use crate::{
     error,
     request::completion::{TextCompletionResponse, COMPLETION_URL},
+    request::TextCompletionRequest,
     APIKeysAccess,
 };
 
@@ -111,7 +111,7 @@ impl<'client> Model<'client> {
     #[cfg(feature = "blocking")]
     pub fn request_completion_blocking(
         &self,
-        body: CompletionRequestBody,
+        body: TextCompletionRequest,
     ) -> error::Result<TextCompletionResponse> {
         if !Self::COMPLETIONS_COMPATIBLE.contains(&self.id.as_str()) {
             return Err(error::ModelError::NotCompatibleWithCompletion.into());
@@ -130,7 +130,7 @@ impl<'client> Model<'client> {
 
     pub async fn request_completion(
         &self,
-        body: CompletionRequestBody,
+        body: TextCompletionRequest,
     ) -> error::Result<TextCompletionResponse> {
         if !Self::COMPLETIONS_COMPATIBLE.contains(&self.id.as_str()) {
             return Err(error::ModelError::NotCompatibleWithCompletion.into());

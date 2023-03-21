@@ -9,7 +9,7 @@ pub mod completion;
 
 ///
 #[rq(
-    Completion = "Given a prompt, the model will return one or more predicted completions, and can also return the probabilities of alternative tokens at each position.",
+    TextCompletion = "Given a prompt, the model will return one or more predicted completions, and can also return the probabilities of alternative tokens at each position.",
     ChatCompletion = "Given a chat conversation, the model will return a chat completion response."
 )]
 pub struct RequestBody {
@@ -35,12 +35,12 @@ pub struct RequestBody {
     /// Note that <|endoftext|> is the document separator that the model sees during training,
     /// so if a `prompt` is not specified the model will generate as if from the beginning of a new
     /// document.
-    #[rq(on(Completion))]
+    #[rq(on(TextCompletion))]
     prompt: Option<Vec<String>>,
     /// Optional. Defaults to null.
     ///
     /// The `suffix` that comes after a completion of inserted text.
-    #[rq(on(Completion))]
+    #[rq(on(TextCompletion))]
     suffix: Option<String>,
     /// Optional. Defaults to 16.
     ///
@@ -50,7 +50,7 @@ pub struct RequestBody {
     ///
     /// Most models have a context length of 2048 tokens
     /// (except for the newest models, which support 4096).
-    #[rq(on(Completion, ChatCompletion))]
+    #[rq(on(TextCompletion, ChatCompletion))]
     max_tokens: Option<u64>,
     /// Optional. Defaults to 1.
     ///
@@ -58,7 +58,7 @@ pub struct RequestBody {
     /// output more random, while lower values like 0.2 will make it more focused and deterministic.
     ///
     /// It's generally recommended to alter this or top_p but not both.
-    #[rq(on(Completion, ChatCompletion))]
+    #[rq(on(TextCompletion, ChatCompletion))]
     temperature: Option<f64>,
     /// Optional. Defaults to 1.
     ///
@@ -67,7 +67,7 @@ pub struct RequestBody {
     /// tokens comprising the top 10% probability mass are considered.
     ///
     /// It's generally recommended to alter this or temperature but not both.
-    #[rq(on(Completion, ChatCompletion))]
+    #[rq(on(TextCompletion, ChatCompletion))]
     top_p: Option<f64>,
     /// Optional. Defaults to 1.
     ///
@@ -75,7 +75,7 @@ pub struct RequestBody {
     ///
     /// Note: Because this parameter generates many completions, it can quickly consume your token
     /// quota. Use carefully and ensure that you have reasonable settings for `max_tokens` and stop.
-    #[rq(on(Completion, ChatCompletion))]
+    #[rq(on(TextCompletion, ChatCompletion))]
     n: Option<NonZeroU64>,
     /// Optional. Defaults to false.
     ///
@@ -83,7 +83,7 @@ pub struct RequestBody {
     /// [server-sent events](https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events#Event_stream_format)
     /// as they become available, with the stream terminated by a data: (DONE)
     /// message.
-    #[rq(on(Completion, ChatCompletion))]
+    #[rq(on(TextCompletion, ChatCompletion))]
     stream: Option<bool>,
     /// Optional. Defaults to null.
     ///
@@ -96,18 +96,18 @@ pub struct RequestBody {
     ///
     /// The maximum value for `logprobs` is 5. If you need more than this, please contact OpenAI
     /// through their [Help center](https://help.openai.com/) and describe your use case.
-    #[rq(on(Completion))]
+    #[rq(on(TextCompletion))]
     logprobs: Option<u8>,
     /// Optional. Defaults to false.
     ///
     /// Echo back the prompt in addition to the completion.
-    #[rq(on(Completion))]
+    #[rq(on(TextCompletion))]
     echo: Option<bool>,
     /// Optional. Defaults to null.
     ///
     /// Up to 4 sequences where the API will stop generating further tokens.
     /// The returned text will not contain the `stop` sequence.
-    #[rq(on(Completion, ChatCompletion))]
+    #[rq(on(TextCompletion, ChatCompletion))]
     stop: Option<Vec<String>>,
     /// Optional. Defaults to 0.0.
     ///
@@ -115,7 +115,7 @@ pub struct RequestBody {
     /// appear in the text so far, increasing the model's likelihood to talk about new topics.
     ///
     /// [See more information about frequency and presence penalties.](https://platform.openai.com/docs/api-reference/parameter-details)
-    #[rq(on(Completion, ChatCompletion))]
+    #[rq(on(TextCompletion, ChatCompletion))]
     presence_penalty: Option<f64>,
     /// Optional. Defaults to 0.0.
     ///
@@ -124,7 +124,7 @@ pub struct RequestBody {
     /// verbatim.
     ///
     /// [See more information about frequency and presence penalties.](https://platform.openai.com/docs/api-reference/parameter-details)
-    #[rq(on(Completion, ChatCompletion))]
+    #[rq(on(TextCompletion, ChatCompletion))]
     frequency_penalty: Option<f64>,
     /// Optional. Defaults to 1.
     ///
@@ -136,7 +136,7 @@ pub struct RequestBody {
     ///
     /// Note: Because this parameter generates many completions, it can quickly consume your token
     /// quota. Use carefully and ensure that you have reasonable settings for max_tokens and stop.
-    #[rq(on(Completion))]
+    #[rq(on(TextCompletion))]
     best_of: Option<u64>,
     /// Optional. Defaults to null.
     ///
@@ -153,13 +153,13 @@ pub struct RequestBody {
     ///
     /// As an example, you can pass {"50256": -100} to prevent the <|endoftext|> token from being
     /// generated.
-    #[rq(on(Completion, ChatCompletion))]
+    #[rq(on(TextCompletion, ChatCompletion))]
     logit_bias: Option<BTreeMap<String, i64>>,
     /// Optional
     ///
     /// A unique identifier representing your end-user, which can help OpenAI to monitor and
     /// detect abuse.
     /// [Learn more](https://platform.openai.com/docs/guides/safety-best-practices/end-user-ids).
-    #[rq(on(Completion, ChatCompletion))]
+    #[rq(on(TextCompletion, ChatCompletion))]
     user: Option<String>,
 }
