@@ -1,7 +1,4 @@
-use crate::{
-    error,
-    APIKeysAccess,
-};
+use crate::{error, APIKeysAccess};
 
 #[derive(Debug, getset::Getters)]
 pub struct Model<'client> {
@@ -27,27 +24,6 @@ pub struct Model<'client> {
 }
 
 impl<'client> Model<'client> {
-    pub const CHAT_COMPLETIONS_COMPATIBLE: &'static [&'static str] = &[
-        "gpt-4",
-        "gpt-4-0314",
-        "gpt-4-32k",
-        "gpt-4-32k-0314",
-        "gpt-3.5-turbo",
-        "gpt-3.5-turbo-0301",
-    ];
-    pub const TEXT_COMPLETIONS_COMPATIBLE: &'static [&'static str] = &[
-        "text-davinci-003",
-        "text-davinci-002",
-        "text-curie-001",
-        "text-babbage-001",
-        "text-ada-001",
-        "davinci",
-        "curie",
-        "babbage",
-        "ada",
-    ];
-    pub const EDITS_COMPATIBLE: &'static [&'static str] =
-        &["text-davinci-edit-001", "code-davinci-edit-001"];
     pub const AUDIO_TRANSCRIPTIONS: &'static [&'static str] = &["whisper-1"];
     pub const FINE_TUNES_COMPATIBLE: &'static [&'static str] =
         &["davinci", "curie", "babbage", "ada"];

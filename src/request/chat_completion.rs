@@ -1,3 +1,4 @@
+use crate::request::Usage;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -22,7 +23,7 @@ pub struct ChatCompletionResponse {
     pub object: String,
     pub created: u64,
     pub choices: Vec<ChatCompletionChoice>,
-    pub usage: ChatCompletionUsage,
+    pub usage: Usage,
 }
 
 #[derive(Debug, Deserialize)]
@@ -30,11 +31,4 @@ pub struct ChatCompletionChoice {
     pub index: u64,
     pub message: ChatMessage,
     pub finish_reason: String,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct ChatCompletionUsage {
-    pub prompt_tokens: u64,
-    pub completion_tokens: u64,
-    pub total_tokens: u64,
 }

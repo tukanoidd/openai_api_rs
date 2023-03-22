@@ -1,6 +1,6 @@
 use std::fmt::{Display, Formatter};
 
-use crate::model::Model;
+use crate::request::{ChatCompletionRequest, EditRequest, Request, TextCompletionRequest};
 
 pub type Result<T> = std::result::Result<T, Error>;
 
@@ -44,16 +44,20 @@ impl Display for ParseError {
 pub enum ModelError {
     NotCompatibleWithTextCompletion,
     NotCompatibleWithChatCompletion,
+    NotCompatibleWithEdit,
 }
 
 impl Display for ModelError {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             Self::NotCompatibleWithTextCompletion => {
-                write!(f, "Model is not compatible with text completion endpoint, please use one of these models: {:?}", Model::TEXT_COMPLETIONS_COMPATIBLE)
+                write!(f, "Model is not compatible with text completion endpoint, please use one of these models: {:?}", TextCompletionRequest::COMPATIBLE_MODELS)
             }
             Self::NotCompatibleWithChatCompletion => {
-                write!(f, "Model is not compatible with chat completion endpoint, please use one of these models: {:?}", Model::CHAT_COMPLETIONS_COMPATIBLE)
+                write!(f, "Model is not compatible with chat completion endpoint, please use one of these models: {:?}", ChatCompletionRequest::COMPATIBLE_MODELS)
+            }
+            Self::NotCompatibleWithEdit => {
+                write!(f, "Model is not compatible with edit endpoint, please use one of these models: {:?}", EditRequest::COMPATIBLE_MODELS)
             }
         }
     }

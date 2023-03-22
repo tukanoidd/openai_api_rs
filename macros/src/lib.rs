@@ -153,11 +153,7 @@ fn rq_impl(attr: TokenStream, input: TokenStream) -> miette::Result<TokenStream>
                     substructs_names_docs
                         .iter()
                         .for_each(|(&ref substruct_name, _)| {
-                            let mut field = field.clone();
-
-                            if all_req {
-                                fix_req_option(&mut field).expect("Couldn't fix the field");
-                            }
+                            let field = field.clone();
 
                             substructs_fields
                                 .entry(substruct_name.clone())
@@ -171,11 +167,7 @@ fn rq_impl(attr: TokenStream, input: TokenStream) -> miette::Result<TokenStream>
                 on_substructs_names_req
                     .into_iter()
                     .for_each(|(substruct_name, req)| {
-                        let mut field = field.clone();
-
-                        if req {
-                            fix_req_option(&mut field).expect("Couldn't fix the field");
-                        }
+                        let field = field.clone();
 
                         substructs_fields
                             .entry(substruct_name)

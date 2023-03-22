@@ -1,5 +1,5 @@
 use openai_api_rs::request::chat_completion::{ChatMessage, ChatRole};
-use openai_api_rs::request::{ChatCompletionRequest, Request};
+use openai_api_rs::request::{ChatCompletionRequest, EditRequest, Request};
 use openai_api_rs::{client::Client, request::TextCompletionRequest};
 
 #[tokio::main(flavor = "current_thread")]
@@ -24,7 +24,7 @@ async fn main() {
         .with_prompt(vec!["This is a test".to_string()]);
 
     // Request the completion
-    let completion = completion_request.request().await.unwrap();
+    let completion = completion_request.execute().await.unwrap();
 
     println!("{:#?}", completion);
 
@@ -37,7 +37,7 @@ async fn main() {
 
     // Request the completion, expecting an error since this model is not supposed to be compatible
     // with completions
-    match completion_request.request().await {
+    match completion_request.execute().await {
         Ok(completion) => panic!("Expected error, got {:?}", completion),
         Err(err) => println!("Got expected error: {}", err),
     };
@@ -52,8 +52,27 @@ async fn main() {
     );
 
     // Request the chat completion
-    let response = chat_completion_request.request().await.unwrap();
+    let response = chat_completion_request.execute().await.unwrap();
 
     // Print out the chat completion response
+    println!("{:#?}", response);
+
+    // Get text-davinci-edit-001 model
+    let text_davinci_edit_model = client
+        .retrieve_model_info("text-davinci-edit-001")
+        .await
+        .unwrap();
+
+    // Init the edit request for this model and configure it
+    let edit_request = EditRequest::init(
+        &text_davinci_edit_model,
+        "Fix spelling mistakes".to_string(),
+    )
+    .with_input("Thes i a test masage".to_string());
+
+    // Request the edit
+    let response = edit_request.execute().await.unwrap();
+
+    // Print out the edit response
     println!("{:#?}", response);
 }

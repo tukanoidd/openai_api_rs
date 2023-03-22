@@ -79,7 +79,7 @@ impl<'client> eframe::App for App<'client> {
                     let request = TextCompletionRequest::init(&self.text_davinci_model)
                         .with_prompt(vec![self.text.clone()]);
                     let completion = request
-                        .request_blocking()
+                        .execute_blocking()
                         .expect("Failed to create completion");
 
                     self.result_text = completion

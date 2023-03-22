@@ -1,5 +1,7 @@
 use serde::Deserialize;
 
+use crate::request::Usage;
+
 #[derive(Debug, Deserialize)]
 pub struct TextCompletionResponse {
     pub choices: Vec<TextCompletionChoice>,
@@ -7,7 +9,7 @@ pub struct TextCompletionResponse {
     pub id: String,
     pub model: String,
     pub object: String,
-    pub usage: TextCompletionUsage,
+    pub usage: Usage,
 }
 
 #[derive(Debug, Deserialize)]
@@ -16,11 +18,4 @@ pub struct TextCompletionChoice {
     pub index: u64,
     pub logprobs: Option<u8>,
     pub text: String,
-}
-
-#[derive(Debug, Deserialize)]
-pub struct TextCompletionUsage {
-    pub completion_tokens: u64,
-    pub prompt_tokens: u64,
-    pub total_tokens: u64,
 }

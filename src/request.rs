@@ -1,6 +1,7 @@
 use std::{collections::BTreeMap, num::NonZeroU64};
 
 use async_trait::async_trait;
+use serde::Deserialize;
 
 use macros::rq;
 
@@ -9,12 +10,14 @@ use crate::{
     model::Model,
     request::{
         chat_completion::{ChatCompletionResponse, ChatMessage},
+        edit::EditResponse,
         text_completion::TextCompletionResponse,
     },
     APIKeysAccess,
 };
 
 pub mod chat_completion;
+pub mod edit;
 pub mod text_completion;
 
 #[rq(
@@ -44,6 +47,11 @@ pub mod text_completion;
             "gpt-3.5-turbo",
             "gpt-3.5-turbo-0301",
         )
+    ),
+    Edit(
+        doc("Creates a new edit for the provided input, instruction, and parameters."),
+        url("https://api.openai.com/v1/edits"),
+        compatible_models("text-davinci-edit-001", "code-davinci-edit-001")
     )
 )]
 pub struct RequestBody {
@@ -52,7 +60,7 @@ pub struct RequestBody {
     /// The messages to generate chat completions for, in the
     /// [chat format](https://platform.openai.com/docs/guides/chat/introduction).
     #[rq(on(ChatCompletion(req)))]
-    messages: Option<Vec<ChatMessage>>,
+    messages: Vec<ChatMessage>,
     /// Optional. Defaults to <|endoftext|>.
     ///
     /// The `prompt`(s) to generate completions for, encoded as a string, array of strings, array of
@@ -84,7 +92,7 @@ pub struct RequestBody {
     /// output more random, while lower values like 0.2 will make it more focused and deterministic.
     ///
     /// It's generally recommended to alter this or top_p but not both.
-    #[rq(on(TextCompletion, ChatCompletion))]
+    #[rq(on(TextCompletion, ChatCompletion, Edit))]
     temperature: Option<f64>,
     /// Optional. Defaults to 1.
     ///
@@ -93,15 +101,25 @@ pub struct RequestBody {
     /// tokens comprising the top 10% probability mass are considered.
     ///
     /// It's generally recommended to alter this or temperature but not both.
-    #[rq(on(TextCompletion, ChatCompletion))]
+    #[rq(on(TextCompletion, ChatCompletion, Edit))]
     top_p: Option<f64>,
+    /// Optional. Defaults to "".
+    ///
+    /// The input text to use as a starting point for the edit.
+    #[rq(on(Edit))]
+    input: Option<String>,
+    /// Required.
+    ///
+    /// The instruction that tells the model how to edit the prompt.
+    #[rq(on(Edit(req)))]
+    instruction: String,
     /// Optional. Defaults to 1.
     ///
     /// How many completions to generate for each prompt.
     ///
     /// Note: Because this parameter generates many completions, it can quickly consume your token
     /// quota. Use carefully and ensure that you have reasonable settings for `max_tokens` and stop.
-    #[rq(on(TextCompletion, ChatCompletion))]
+    #[rq(on(TextCompletion, ChatCompletion, Edit))]
     n: Option<NonZeroU64>,
     /// Optional. Defaults to false.
     ///
@@ -205,7 +223,7 @@ where
     fn to_json(&self) -> serde_json::Result<serde_json::Value>;
 
     #[cfg(feature = "blocking")]
-    fn request_blocking(&self) -> error::Result<Response>
+    fn execute_blocking(&self) -> error::Result<Response>
     where
         Self: Sized,
     {
@@ -225,7 +243,7 @@ where
         Ok(res.json()?)
     }
 
-    async fn request(&self) -> error::Result<Response>
+    async fn execute(&self) -> error::Result<Response>
     where
         Self: Sized + Sync,
     {
@@ -245,4 +263,11 @@ where
 
         Ok(res.json().await?)
     }
+}
+
+#[derive(Debug, Deserialize)]
+pub struct Usage {
+    pub completion_tokens: u64,
+    pub prompt_tokens: u64,
+    pub total_tokens: u64,
 }
