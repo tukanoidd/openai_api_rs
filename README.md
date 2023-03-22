@@ -7,7 +7,7 @@ A manual implementation of the OpenAI API based on its
 - [x] Models
 - [x] Completions
 - [x] Chat
-- [ ] Edits
+- [x] Edits
 - [ ] Images
 - [ ] Embeddings
 - [ ] Audio
